@@ -70,12 +70,13 @@ fn main() {
 		text(content);
 	} else if let Some(sub_matches) = matches.subcommand_matches("file") {
 		let output_filename = sub_matches.value_of("output").unwrap();
-		let input_filename = if sub_matches.is_present("encrypt") {
-			sub_matches.value_of("encrypt").unwrap()
+		if sub_matches.is_present("encrypt") {
+			let input_filename = sub_matches.value_of("encrypt").unwrap();
+			file_enc(input_filename, output_filename);
 		} else {
-			sub_matches.value_of("decrypt").unwrap()
+			let input_filename = sub_matches.value_of("decrypt").unwrap();
+			file_dec(input_filename, output_filename);
 		};
-		file(input_filename);
 	} else {
 		text("Crypto");
 	}
@@ -112,44 +113,32 @@ fn text(content: &str) {
 	println!("Deciphered (ascii)\t: {}", deciphered_text);
 }
 
-fn file_enc() {
-
-}
-
-fn file_dec() {
-
-}
-
-fn file(filename: &str) {
-	println!("FILE - {}", filename);
-	// let ciph_extension = "ciph";
-	let encrypted_filename = "encrypted.ciph";
-	let decrypted_filename = "decrypted.result";
+fn file_enc(filename: &str, ofile: &str) {
 	let content_file = fs::read(filename).unwrap();
 
-	if let Some("ciph") = get_file_extension(filename) {
-		let content_bigint = fdata::slice_to_bigint(&content_file);
-		let content_binary_string = fdata::bigint_to_binary_string(&content_bigint);
-		let deciphered_binary_string = feistelcipher::encrypt_decrypt(
-			Mode::Decrypt, &content_binary_string
-		);
-		let deciphered_int = fdata::binary_str_to_bigint(&deciphered_binary_string);
-		let deciphered_content = fdata::bigint_to_vec(&deciphered_int);
+	let deciphered_content = load_data(Mode::Encrypt, &content_file);
 
-		let mut result_file = File::create(decrypted_filename).unwrap();
-		result_file.write_all(&deciphered_content).unwrap();
-	} else {
-		let content_bigint = fdata::slice_to_bigint(&content_file);
-		let content_binary_string = fdata::bigint_to_binary_string(&content_bigint);
-		let ciphered_binary_string = feistelcipher::encrypt_decrypt(
-			Mode::Encrypt, &content_binary_string
-		);
-		let ciphered_int = fdata::binary_str_to_bigint(&ciphered_binary_string);
-		let ciphered_content = fdata::bigint_to_vec(&ciphered_int);
+	let mut result_file = File::create(ofile).unwrap();
+	result_file.write_all(&deciphered_content).unwrap();
+}
 
-		let mut result_file = File::create(encrypted_filename).unwrap();
-		result_file.write_all(&ciphered_content).unwrap();
-	}
+fn file_dec(filename: &str, ofile: &str) {
+	let content_file = fs::read(filename).unwrap();
+
+	let ciphered_content = load_data(Mode::Decrypt, &content_file);
+
+	let mut result_file = File::create(ofile).unwrap();
+	result_file.write_all(&ciphered_content).unwrap();
+}
+
+fn load_data(mode: Mode, content_file: &[u8]) -> Vec<u8> {
+	let content_bigint = fdata::slice_to_bigint(&content_file);
+	let content_binary_string = fdata::bigint_to_binary_string(&content_bigint);
+	let deciphered_binary_string = feistelcipher::encrypt_decrypt(
+		mode, &content_binary_string
+	);
+	let deciphered_int = fdata::binary_str_to_bigint(&deciphered_binary_string);
+	fdata::bigint_to_vec(&deciphered_int)
 }
 
 
@@ -158,11 +147,11 @@ fn sep() {
 	println!("{}", separator);
 }
 
-fn get_file_extension(filename: &str) -> Option<&str> {
-	use std::path::Path;
-	use std::ffi::OsStr;
+// fn get_file_extension(filename: &str) -> Option<&str> {
+//     use std::path::Path;
+//     use std::ffi::OsStr;
 
-	Path::new(filename)        
-		.extension()        
-		.and_then(OsStr::to_str)
-}
+//     Path::new(filename)        
+//         .extension()        
+//         .and_then(OsStr::to_str)
+// }
